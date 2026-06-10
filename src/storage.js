@@ -1,11 +1,11 @@
 // Seed data for initial scooters
 const INITIAL_SCOOTERS = [
-  { id: 'SC001', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SC002', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SC003', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SC004', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SC005', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SC006', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
+  { id: 'SD-001', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
+  { id: 'SD-002', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
+  { id: 'SD-003', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
+  { id: 'SJ-001', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
+  { id: 'SJ-002', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
+  { id: 'SJ-003', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
 ]
 
 const SCOOTERS_KEY = 'trackscooter_scooters'
@@ -37,12 +37,17 @@ export function addScooter({ id, type }) {
       throw new Error(`ID "${finalId}" sudah terdaftar di sistem.`)
     }
   } else {
-    // Generate next ID
-    const nums = scooters
-      .map(s => parseInt(s.id.replace(/\D/g, ''), 10))
+    // Generate type-specific prefix (SD- or SJ-)
+    const prefix = `${type.toUpperCase()}-`
+    const sameTypeScooters = scooters.filter(s => s.type === type)
+    const nums = sameTypeScooters
+      .map(s => {
+        const numPart = s.id.replace(prefix, '')
+        return parseInt(numPart, 10)
+      })
       .filter(n => !isNaN(n))
     const next = nums.length ? Math.max(...nums) + 1 : 1
-    finalId = `SC${String(next).padStart(3, '0')}`
+    finalId = `${prefix}${String(next).padStart(3, '0')}`
   }
 
   const scooter = { id: finalId, type, status: 'available', lastUpdated: new Date().toISOString() }
@@ -94,7 +99,7 @@ export function toggleScooterStatus(scooterId, forceMaintenance = false) {
 
   const wasAvailable = scooter.status === 'available' || scooter.status === 'maintenance'
   const nextStatus = wasAvailable ? 'in-use' : 'available'
-  
+
   // Clear maintenance notes when taken out of maintenance
   const updatedScooter = { ...scooter, status: nextStatus, lastUpdated: new Date().toISOString() }
   if (nextStatus === 'in-use') {
