@@ -1,0 +1,274 @@
+import { useState } from 'react'
+import { Plus, Download, Trash2, Search, Bike, AlertCircle } from 'lucide-react'
+import { useScooterData } from '../hooks/useScooterData'
+import { addScooter, deleteScooter, updateScooter, downloadScooterQR } from '../storage'
+
+export default function ManagePage() {
+  const { scooters, refresh } = useScooterData()
+  const [idInput, setIdInput] = useState('')
+  const [type, setType] = useState('sd')
+  const [search, setSearch] = useState('')
+  const [filterType, setFilterType] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [error, setError] = useState('')
+  const [downloadingId, setDownloadingId] = useState(null)
+
+  const handleAdd = (e) => {
+    e.preventDefault()
+    setError('')
+
+    try {
+      addScooter({ id: idInput, type })
+      setIdInput('')
+      setType('sd')
+      refresh()
+    } catch (err) {
+      setError(err.message || 'Gagal menambahkan scooter.')
+    }
+  }
+
+  const handleDelete = (id) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus scooter ${id}?`)) {
+      deleteScooter(id)
+      refresh()
+    }
+  }
+
+  const handleStatusChange = (id, newStatus) => {
+    try {
+      let fields = { status: newStatus }
+
+      if (newStatus === 'maintenance') {
+        const current = scooters.find(s => s.id === id)
+        const note = prompt('Masukkan catatan perbaikan/maintenance (opsional):', current?.maintenanceNote || '')
+        if (note === null) return // User cancelled prompt
+        fields.maintenanceNote = note.trim()
+      } else {
+        fields.maintenanceNote = ''
+      }
+
+      updateScooter(id, fields)
+      refresh()
+    } catch (err) {
+      alert('Gagal mengubah status scooter.')
+    }
+  }
+
+  const handleDownloadQR = async (scooter) => {
+    try {
+      setDownloadingId(scooter.id)
+      await downloadScooterQR(scooter)
+    } catch (err) {
+      alert('Gagal mengunduh QR Code')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  // Filter scooters
+  const filtered = scooters.filter((s) => {
+    const matchesSearch = s.id.toLowerCase().includes(search.toLowerCase())
+    const matchesType = filterType === 'all' || s.type === filterType
+    const matchesStatus = filterStatus === 'all' || s.status === filterStatus
+    return matchesSearch && matchesType && matchesStatus
+  })
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-[20px] font-bold text-[var(--color-text)]">Kelola Scooter</h1>
+        <p className="mt-0.5 text-[13px] text-[var(--color-muted)]">
+          Tambah unit scooter baru, ubah status unit, dan unduh QR code untuk operasional
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
+        {/* Left column: Add Form */}
+        <div className="h-fit rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+          <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-widest text-[var(--color-subtle)]">
+            Tambah Unit Baru
+          </h2>
+
+          <form onSubmit={handleAdd} className="space-y-4">
+            {error && (
+              <div className="flex items-start gap-2 rounded-lg bg-[var(--color-red-subtle)] p-3 text-[12px] text-[var(--color-red)]">
+                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-medium text-[var(--color-muted)]">ID Scooter (Opsional)</label>
+              <input
+                type="text"
+                value={idInput}
+                onChange={(e) => {
+                  setIdInput(e.target.value.toUpperCase())
+                  setError('')
+                }}
+                placeholder="Kosongkan untuk auto-generate"
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-3)] px-3 py-2 font-mono text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] transition-colors placeholder:text-[var(--color-subtle)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-medium text-[var(--color-muted)]">Jenis Scooter</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-3)] px-3 py-2 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] transition-colors cursor-pointer"
+              >
+                <option value="sd">Dewasa (SD)</option>
+                <option value="sj">Jumbo (SJ)</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[var(--color-accent)] py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              <Plus size={15} />
+              Tambah Scooter
+            </button>
+          </form>
+        </div>
+
+        {/* Right column: Scooter List & Actions */}
+        <div className="flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
+          {/* List Toolbar */}
+          <div className="flex flex-col gap-3 border-b border-[var(--color-border)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-[13px] font-semibold uppercase tracking-widest text-[var(--color-subtle)]">
+              Daftar Unit ({filtered.length})
+            </h2>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {/* Search */}
+              <div className="relative">
+                <Search size={13} className="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-subtle)]" />
+                <input
+                  type="text"
+                  placeholder="Cari ID..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full sm:w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-3)] pl-8 pr-3 py-1.5 text-[12px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-3)] px-3 py-1.5 text-[12px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] transition-colors cursor-pointer"
+              >
+                <option value="all">Semua Status</option>
+                <option value="available">Tersedia</option>
+                <option value="in-use">Disewakan</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
+
+              {/* Type Filter */}
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-3)] px-3 py-1.5 text-[12px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] transition-colors cursor-pointer"
+              >
+                <option value="all">Semua Jenis</option>
+                <option value="sd">Dewasa (SD)</option>
+                <option value="sj">Jumbo (SJ)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* List Content */}
+          <div className="overflow-x-auto">
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center">
+                <Bike size={28} className="mb-2 text-[var(--color-border-2)]" />
+                <p className="text-[13px] text-[var(--color-muted)]">Tidak ada scooter ditemukan.</p>
+              </div>
+            ) : (
+              <table className="w-full border-collapse text-left text-[13px]">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-2)] text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+                    <th className="px-4 py-3">ID Scooter</th>
+                    <th className="px-4 py-3">Jenis</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {filtered.map((scooter) => (
+                    <tr key={scooter.id} className="hover:bg-[var(--color-surface-3)] transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-[var(--color-accent)]">
+                        {scooter.id}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                            scooter.type === 'sd'
+                              ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
+                              : 'bg-[var(--color-surface-3)] text-[var(--color-muted)]'
+                          }`}
+                        >
+                          {scooter.type === 'sd' ? 'Dewasa (SD)' : 'Jumbo (SJ)'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {scooter.status === 'in-use' ? (
+                          <div className="inline-flex items-center gap-1 rounded border border-[var(--color-red-ring)] bg-[var(--color-surface-3)] px-2 py-1 text-[12px] font-medium text-[var(--color-red)]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-red)] dot-pulse" />
+                            Digunakan
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-start">
+                            <select
+                              value={scooter.status}
+                              onChange={(e) => handleStatusChange(scooter.id, e.target.value)}
+                              className={`rounded border border-[var(--color-border)] bg-[var(--color-surface-3)] px-2 py-1 text-[12px] font-medium outline-none focus:border-[var(--color-accent)] cursor-pointer transition-colors ${
+                                scooter.status === 'available'
+                                  ? 'text-[var(--color-green)] border-[var(--color-green-ring)]'
+                                  : 'text-[var(--color-warning)] border-[var(--color-warning-ring)]'
+                              }`}
+                            >
+                              <option value="available">Tersedia</option>
+                              <option value="maintenance">Maintenance</option>
+                            </select>
+                            {scooter.status === 'maintenance' && scooter.maintenanceNote && (
+                              <p className="mt-1 max-w-[200px] break-words text-[11px] italic text-[var(--color-muted)] leading-tight">
+                                Catatan: {scooter.maintenanceNote}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleDownloadQR(scooter)}
+                            disabled={downloadingId === scooter.id}
+                            title="Unduh QR Code"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--color-border)] bg-transparent text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <Download size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(scooter.id)}
+                            title="Hapus Unit"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--color-border)] bg-transparent text-[var(--color-muted)] hover:border-[var(--color-red)] hover:text-[var(--color-red)] transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
