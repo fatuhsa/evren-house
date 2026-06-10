@@ -100,16 +100,22 @@ export default function ManagePage() {
 
             <div className="space-y-1.5">
               <label className="text-[11px] font-medium text-[var(--color-muted)]">ID Scooter (Opsional)</label>
-              <input
-                type="text"
-                value={idInput}
-                onChange={(e) => {
-                  setIdInput(e.target.value.toUpperCase())
-                  setError('')
-                }}
-                placeholder="Kosongkan untuk auto-generate"
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-3)] px-3 py-2 font-mono text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] transition-colors placeholder:text-[var(--color-subtle)]"
-              />
+              <div className="relative flex items-center">
+                <span className="absolute left-3 font-mono text-[13px] font-bold text-[var(--color-accent)] pointer-events-none select-none">
+                  {type.toUpperCase()}-
+                </span>
+                <input
+                  type="text"
+                  value={idInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    setIdInput(val)
+                    setError('')
+                  }}
+                  placeholder="099 (Auto jika kosong)"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-3)] pl-12 pr-3 py-2 font-mono text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] transition-colors placeholder:text-[var(--color-subtle)]"
+                />
+              </div>
             </div>
 
             <div className="space-y-1.5">
