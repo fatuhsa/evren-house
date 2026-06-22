@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, QrCode, Package, X, Bike, Download } from 'lucide-react'
+import { LayoutDashboard, QrCode, Package, X, Bike, Download, Monitor } from 'lucide-react'
 import { exportData } from '../storage'
 
 const NAV = [
   { to: '/',       icon: LayoutDashboard, label: 'Dashboard'  },
+  { to: '/monitor', icon: Monitor,         label: 'Monitor'    },
   { to: '/scan',   icon: QrCode,          label: 'Scan QR'    },
   { to: '/manage', icon: Package,         label: 'Produk'     },
 ]

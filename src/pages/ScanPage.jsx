@@ -12,21 +12,25 @@ export default function ScanPage() {
   const [result, setResult]   = useState(null)
   const [scanning, setScanning] = useState(true)
 
-  const handleScan = useCallback((scooterId) => {
+  const handleScan = useCallback(async (scooterId) => {
     if (!scanning) return
     setScanning(false)
 
-    const res = toggleScooterStatus(scooterId)
-    if (res.requiresConfirmation) {
-      const confirmed = window.confirm(res.message)
-      if (confirmed) {
-        const forceRes = toggleScooterStatus(scooterId, true)
-        setResult(forceRes)
+    try {
+      const res = await toggleScooterStatus(scooterId)
+      if (res.requiresConfirmation) {
+        const confirmed = window.confirm(res.message)
+        if (confirmed) {
+          const forceRes = await toggleScooterStatus(scooterId, true)
+          setResult(forceRes)
+        } else {
+          setScanning(true)
+        }
       } else {
-        setScanning(true)
+        setResult(res)
       }
-    } else {
-      setResult(res)
+    } catch (err) {
+      setResult({ success: false, message: err.message || 'Gagal mengubah status scooter.' })
     }
   }, [scanning])
 

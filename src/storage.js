@@ -1,46 +1,48 @@
-// Seed data for initial scooters
-const INITIAL_SCOOTERS = [
-  { id: 'SD-001', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SD-002', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SD-003', type: 'sd', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SJ-001', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SJ-002', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
-  { id: 'SJ-003', type: 'sj', status: 'available', lastUpdated: new Date().toISOString() },
-]
-
-const SCOOTERS_KEY = 'trackscooter_scooters'
-const LOG_KEY      = 'trackscooter_log'
+import { supabase } from './supabaseClient'
 
 // ── Scooters ──────────────────────────────────────────────
-export function getScooters() {
-  try {
-    const data = localStorage.getItem(SCOOTERS_KEY)
-    if (!data) {
-      localStorage.setItem(SCOOTERS_KEY, JSON.stringify(INITIAL_SCOOTERS))
-      return INITIAL_SCOOTERS
-    }
-    return JSON.parse(data)
-  } catch { return INITIAL_SCOOTERS }
+export async function getScooters() {
+  const { data, error } = await supabase
+    .from('scooters')
+    .select('*')
+    .order('id', { ascending: true })
+  
+  if (error) throw error
+  
+  return (data || []).map(s => ({
+    id: s.id,
+    type: s.type,
+    status: s.status,
+    maintenanceNote: s.maintenance_note,
+    lastUpdated: s.last_updated
+  }))
 }
 
-export function saveScooters(scooters) {
-  localStorage.setItem(SCOOTERS_KEY, JSON.stringify(scooters))
-}
-
-export function addScooter({ id, type }) {
-  const scooters = getScooters()
+export async function addScooter({ id, type }) {
   let finalId = id ? id.trim().toUpperCase() : ''
 
   if (finalId) {
-    const exists = scooters.some(s => s.id.toUpperCase() === finalId)
-    if (exists) {
+    const { data: existing, error: checkError } = await supabase
+      .from('scooters')
+      .select('id')
+      .eq('id', finalId)
+      .maybeSingle()
+    
+    if (checkError) throw checkError
+    if (existing) {
       throw new Error(`ID "${finalId}" sudah terdaftar di sistem.`)
     }
   } else {
     // Generate type-specific prefix (SD- or SJ-)
     const prefix = `${type.toUpperCase()}-`
-    const sameTypeScooters = scooters.filter(s => s.type === type)
-    const nums = sameTypeScooters
+    const { data: sameTypeScooters, error: listError } = await supabase
+      .from('scooters')
+      .select('id')
+      .eq('type', type)
+    
+    if (listError) throw listError
+
+    const nums = (sameTypeScooters || [])
       .map(s => {
         const numPart = s.id.replace(prefix, '')
         return parseInt(numPart, 10)
@@ -50,46 +52,82 @@ export function addScooter({ id, type }) {
     finalId = `${prefix}${String(next).padStart(3, '0')}`
   }
 
-  const scooter = { id: finalId, type, status: 'available', lastUpdated: new Date().toISOString() }
-  saveScooters([...scooters, scooter])
-  return scooter
+  const { data, error } = await supabase
+    .from('scooters')
+    .insert([{
+      id: finalId,
+      type,
+      status: 'available',
+      last_updated: new Date().toISOString()
+    }])
+    .select()
+    .single()
+
+  if (error) throw error
+  return {
+    id: data.id,
+    type: data.type,
+    status: data.status,
+    maintenanceNote: data.maintenance_note,
+    lastUpdated: data.last_updated
+  }
 }
 
-export function deleteScooter(id) {
-  const scooters = getScooters().filter(s => s.id !== id)
-  saveScooters(scooters)
+export async function deleteScooter(id) {
+  const { error } = await supabase
+    .from('scooters')
+    .delete()
+    .eq('id', id)
+  
+  if (error) throw error
 }
 
-export function updateScooter(id, fields) {
-  const scooters = getScooters().map(s =>
-    s.id === id ? { ...s, ...fields, lastUpdated: new Date().toISOString() } : s
-  )
-  saveScooters(scooters)
+export async function updateScooter(id, fields) {
+  const dbFields = {}
+  if ('status' in fields) dbFields.status = fields.status
+  if ('maintenanceNote' in fields) dbFields.maintenance_note = fields.maintenanceNote
+  dbFields.last_updated = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('scooters')
+    .update(dbFields)
+    .eq('id', id)
+  
+  if (error) throw error
 }
 
 // ── Activity log ──────────────────────────────────────────
-export function getActivityLog() {
-  try {
-    const data = localStorage.getItem(LOG_KEY)
-    return data ? JSON.parse(data) : []
-  } catch { return [] }
-}
+export async function getActivityLog() {
+  const { data, error } = await supabase
+    .from('activity_log')
+    .select('*')
+    .order('timestamp', { ascending: false })
+    .limit(500)
+  
+  if (error) throw error
 
-export function saveActivityLog(log) {
-  localStorage.setItem(LOG_KEY, JSON.stringify(log))
+  return (data || []).map(entry => ({
+    id: entry.id,
+    scooterId: entry.scooter_id,
+    scooterType: entry.scooter_type,
+    action: entry.action,
+    timestamp: entry.timestamp
+  }))
 }
 
 // ── Toggle status ─────────────────────────────────────────
-export function toggleScooterStatus(scooterId, forceMaintenance = false) {
-  const scooters = getScooters()
-  const idx = scooters.findIndex(s => s.id === scooterId)
-  if (idx === -1) return { success: false, message: `Scooter "${scooterId}" tidak ditemukan.` }
+export async function toggleScooterStatus(scooterId, forceMaintenance = false) {
+  const { data: scooter, error: getError } = await supabase
+    .from('scooters')
+    .select('*')
+    .eq('id', scooterId)
+    .maybeSingle()
 
-  const scooter = scooters[idx]
+  if (getError) return { success: false, message: `Gagal mengakses basis data: ${getError.message}` }
+  if (!scooter) return { success: false, message: `Scooter "${scooterId}" tidak ditemukan.` }
 
-  // Check if scooter is in maintenance and we are not forcing it
   if (scooter.status === 'maintenance' && !forceMaintenance) {
-    const noteText = scooter.maintenanceNote ? `\nCatatan Perbaikan: "${scooter.maintenanceNote}"` : ''
+    const noteText = scooter.maintenance_note ? `\nCatatan Perbaikan: "${scooter.maintenance_note}"` : ''
     return {
       success: false,
       requiresConfirmation: true,
@@ -100,30 +138,49 @@ export function toggleScooterStatus(scooterId, forceMaintenance = false) {
   const wasAvailable = scooter.status === 'available' || scooter.status === 'maintenance'
   const nextStatus = wasAvailable ? 'in-use' : 'available'
 
-  // Clear maintenance notes when taken out of maintenance
-  const updatedScooter = { ...scooter, status: nextStatus, lastUpdated: new Date().toISOString() }
+  const dbFields = {
+    status: nextStatus,
+    last_updated: new Date().toISOString()
+  }
   if (nextStatus === 'in-use') {
-    delete updatedScooter.maintenanceNote
+    dbFields.maintenance_note = null
   }
-  scooters[idx] = updatedScooter
-  saveScooters(scooters)
 
-  const log = getActivityLog()
-  const entry = {
-    id:          `log-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
-    scooterId,
-    scooterType: scooter.type,
-    action:      wasAvailable ? 'checkout' : 'return',
-    timestamp:   new Date().toISOString(),
+  const { error: updateError } = await supabase
+    .from('scooters')
+    .update(dbFields)
+    .eq('id', scooterId)
+
+  if (updateError) return { success: false, message: `Gagal memperbarui status: ${updateError.message}` }
+
+  const logId = `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const { error: logError } = await supabase
+    .from('activity_log')
+    .insert([{
+      id: logId,
+      scooter_id: scooterId,
+      scooter_type: scooter.type,
+      action: wasAvailable ? 'checkout' : 'return',
+      timestamp: new Date().toISOString()
+    }])
+
+  if (logError) {
+    console.error('Failed to write activity log:', logError.message)
   }
-  log.unshift(entry)
-  saveActivityLog(log.slice(0, 500))
 
   const typeLabel = scooter.type === 'sd' ? 'Dewasa (SD)' : 'Jumbo (SJ)'
+  const updatedScooterMapped = {
+    id: scooter.id,
+    type: scooter.type,
+    status: nextStatus,
+    maintenanceNote: nextStatus === 'in-use' ? null : scooter.maintenance_note,
+    lastUpdated: dbFields.last_updated
+  }
+
   return {
     success: true,
-    scooter: scooters[idx],
-    action:  entry.action,
+    scooter: updatedScooterMapped,
+    action: wasAvailable ? 'checkout' : 'return',
     message: wasAvailable
       ? `Scooter ${scooter.id} (${typeLabel}) sekarang sedang digunakan.`
       : `Scooter ${scooter.id} (${typeLabel}) telah dikembalikan.`,
@@ -147,13 +204,19 @@ export async function downloadScooterQR(scooter) {
 }
 
 // ── JSON export ───────────────────────────────────────────
-export function exportData() {
-  const data = { scooters: getScooters(), activityLog: getActivityLog(), exportedAt: new Date().toISOString() }
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href = url
-  a.download = `trackscooter-${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+export async function exportData() {
+  try {
+    const scooters = await getScooters()
+    const activityLog = await getActivityLog()
+    const data = { scooters, activityLog, exportedAt: new Date().toISOString() }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url
+    a.download = `trackscooter-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    alert('Gagal mengekspor data: ' + err.message)
+  }
 }

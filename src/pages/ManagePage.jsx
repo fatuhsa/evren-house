@@ -4,7 +4,7 @@ import { useScooterData } from '../hooks/useScooterData'
 import { addScooter, deleteScooter, updateScooter, downloadScooterQR } from '../storage'
 
 export default function ManagePage() {
-  const { scooters, refresh } = useScooterData()
+  const { scooters, loading, refresh } = useScooterData()
   const [idInput, setIdInput] = useState('')
   const [type, setType] = useState('sd')
   const [search, setSearch] = useState('')
@@ -12,29 +12,37 @@ export default function ManagePage() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [error, setError] = useState('')
   const [downloadingId, setDownloadingId] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault()
     setError('')
+    setSubmitting(true)
 
     try {
-      addScooter({ id: idInput, type })
+      await addScooter({ id: idInput, type })
       setIdInput('')
       setType('sd')
-      refresh()
+      await refresh()
     } catch (err) {
       setError(err.message || 'Gagal menambahkan scooter.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm(`Apakah Anda yakin ingin menghapus scooter ${id}?`)) {
-      deleteScooter(id)
-      refresh()
+      try {
+        await deleteScooter(id)
+        await refresh()
+      } catch (err) {
+        alert('Gagal menghapus scooter: ' + err.message)
+      }
     }
   }
 
-  const handleStatusChange = (id, newStatus) => {
+  const handleStatusChange = async (id, newStatus) => {
     try {
       let fields = { status: newStatus }
 
@@ -47,10 +55,10 @@ export default function ManagePage() {
         fields.maintenanceNote = ''
       }
 
-      updateScooter(id, fields)
-      refresh()
+      await updateScooter(id, fields)
+      await refresh()
     } catch (err) {
-      alert('Gagal mengubah status scooter.')
+      alert('Gagal mengubah status scooter: ' + err.message)
     }
   }
 
@@ -59,7 +67,7 @@ export default function ManagePage() {
       setDownloadingId(scooter.id)
       await downloadScooterQR(scooter)
     } catch (err) {
-      alert('Gagal mengunduh QR Code')
+      alert('Gagal mengunduh QR Code: ' + err.message)
     } finally {
       setDownloadingId(null)
     }
@@ -132,10 +140,20 @@ export default function ManagePage() {
 
             <button
               type="submit"
-              className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[var(--color-accent)] py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+              disabled={submitting || loading}
+              className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[var(--color-accent)] py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Plus size={15} />
-              Tambah Scooter
+              {submitting ? (
+                <>
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  <Plus size={15} />
+                  Tambah Scooter
+                </>
+              )}
             </button>
           </form>
         </div>
@@ -186,9 +204,13 @@ export default function ManagePage() {
             </div>
           </div>
 
-          {/* List Content */}
           <div className="overflow-x-auto">
-            {filtered.length === 0 ? (
+            {loading && filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent mb-2" />
+                <p className="text-[13px] text-[var(--color-muted)]">Memuat data scooter...</p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-center">
                 <Bike size={28} className="mb-2 text-[var(--color-border-2)]" />
                 <p className="text-[13px] text-[var(--color-muted)]">Tidak ada scooter ditemukan.</p>

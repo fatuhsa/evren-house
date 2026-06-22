@@ -15,7 +15,7 @@ export default function QRImageUploader({ onScan, onError }) {
     } catch {
       onError?.('QR code tidak terdeteksi pada gambar ini.')
     } finally {
-      try { await qr.clear() } catch {}
+      try { await qr.clear() } catch { /* ignore error */ }
       e.target.value = ''
     }
   }
