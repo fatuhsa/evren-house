@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { QrCode, ShieldAlert, Clock, ArrowUpRight, ArrowDownLeft, CalendarDays, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react'
+import { ShieldAlert, Clock, ArrowUpRight, ArrowDownLeft, CalendarDays, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react'
 import { useScooterData } from '../hooks/useScooterData'
 import { formatDistanceToNow, format, isSameDay, startOfDay, parseISO, isToday } from 'date-fns'
 import { id as localeId } from 'date-fns/locale'
@@ -112,34 +111,26 @@ export default function MonitorPage() {
     <div className="mx-auto max-w-6xl space-y-6 px-6 py-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            {isLiveView ? (
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-            ) : (
-              <CalendarDays size={14} className="text-[var(--color-accent)]" />
-            )}
-            <h1 className="text-[20px] font-bold text-[var(--color-text)]">
-              {isLiveView ? 'Live Monitor Lapangan' : 'Riwayat Harian'}
-            </h1>
-          </div>
-          <p className="mt-0.5 text-[13px] text-[var(--color-muted)]">
-            {isLiveView
-              ? 'Pemantauan status dan log aktivitas secara real-time'
-              : `Menampilkan riwayat aktivitas — ${format(activeDate, 'EEEE, dd MMMM yyyy', { locale: localeId })}`
-            }
-          </p>
+      <div>
+        <div className="flex items-center gap-2">
+          {isLiveView ? (
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+          ) : (
+            <CalendarDays size={14} className="text-[var(--color-accent)]" />
+          )}
+          <h1 className="text-[20px] font-bold text-[var(--color-text)]">
+            {isLiveView ? 'Live Monitor Lapangan' : 'Riwayat Harian'}
+          </h1>
         </div>
-        <Link to="/scan">
-          <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-accent)] px-5 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-90 cursor-pointer shadow-lg shadow-[var(--color-accent-subtle)]">
-            <QrCode size={16} />
-            Scan QR Lapangan
-          </button>
-        </Link>
+        <p className="mt-0.5 text-[13px] text-[var(--color-muted)]">
+          {isLiveView
+            ? 'Pemantauan status dan log aktivitas secara real-time'
+            : `Menampilkan riwayat aktivitas — ${format(activeDate, 'EEEE, dd MMMM yyyy', { locale: localeId })}`
+          }
+        </p>
       </div>
 
       {/* ── Date Navigator ── */}
