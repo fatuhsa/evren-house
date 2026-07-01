@@ -10,7 +10,7 @@ function parseDate(ts) {
 }
 
 export default function MonitorPage() {
-  const { scooters, activityLog, loading } = useScooterData()
+  const { scooters, activityLog, loading, error, refresh } = useScooterData()
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter]     = useState('all')
 
@@ -237,13 +237,43 @@ export default function MonitorPage() {
         </div>
       </div>
 
-      {loading && scooters.length === 0 ? (
+      {error && scooters.length === 0 ? (
+        <div className="flex h-[40vh] flex-col items-center justify-center rounded-2xl border border-[var(--color-red-ring)] bg-[var(--color-surface)] p-12 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-red-subtle)] text-[var(--color-red)]">
+            <ShieldAlert size={24} />
+          </div>
+          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Koneksi Basis Data Gagal</h3>
+          <p className="mt-1.5 max-w-sm text-[12px] text-[var(--color-muted)] leading-relaxed">{error}</p>
+          <button
+            onClick={refresh}
+            className="mt-6 cursor-pointer rounded-lg bg-[var(--color-accent)] px-5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Coba Hubungkan Kembali
+          </button>
+        </div>
+      ) : loading && scooters.length === 0 ? (
         <div className="flex h-[40vh] flex-col items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-12 text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--color-accent)] border-t-transparent mb-4" />
           <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Menghubungkan ke Database Supabase...</h3>
           <p className="mt-1 text-[12px] text-[var(--color-muted)]">Menyiapkan koneksi real-time untuk petugas lapangan.</p>
         </div>
       ) : (
+        <>
+          {error && (
+            <div className="mb-4 flex items-start gap-3 rounded-xl border border-[var(--color-red-ring)] bg-[var(--color-red-subtle)] p-4 text-[12px] text-[var(--color-red)]">
+              <ShieldAlert size={16} className="mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold">Sinkronisasi Realtime Terganggu</p>
+                <p className="mt-0.5 opacity-90">{error}</p>
+              </div>
+              <button
+                onClick={refresh}
+                className="cursor-pointer rounded border border-[var(--color-red-ring)] bg-transparent px-2.5 py-1 text-[11px] font-semibold text-[var(--color-red)] transition-colors hover:bg-[var(--color-red-subtle)]"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          )}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
 
           {/* ── Left Column: Status Grid (live only) or Historical Summary ── */}
@@ -428,6 +458,7 @@ export default function MonitorPage() {
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   )

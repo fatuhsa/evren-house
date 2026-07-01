@@ -19,9 +19,19 @@ export async function getScooters() {
 }
 
 export async function addScooter({ id, type }) {
+  const prefix = `${type.toUpperCase()}-`
   let finalId = id ? id.trim().toUpperCase() : ''
 
   if (finalId) {
+    if (!finalId.startsWith(prefix)) {
+      const numericPart = finalId.replace(/\D/g, '')
+      if (numericPart) {
+        finalId = `${prefix}${numericPart.padStart(3, '0')}`
+      } else {
+        finalId = `${prefix}${finalId}`
+      }
+    }
+
     const { data: existing, error: checkError } = await supabase
       .from('scooters')
       .select('id')
@@ -34,7 +44,6 @@ export async function addScooter({ id, type }) {
     }
   } else {
     // Generate type-specific prefix (SD- or SJ-)
-    const prefix = `${type.toUpperCase()}-`
     const { data: sameTypeScooters, error: listError } = await supabase
       .from('scooters')
       .select('id')

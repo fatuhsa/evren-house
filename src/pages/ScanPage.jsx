@@ -11,10 +11,18 @@ export default function ScanPage() {
   const [mode, setMode]       = useState(null)    // null | 'camera' | 'image'
   const [result, setResult]   = useState(null)
   const [scanning, setScanning] = useState(true)
+  const [lastScanned, setLastScanned] = useState({ id: '', time: 0 })
 
   const handleScan = useCallback(async (scooterId) => {
     if (!scanning) return
+
+    const now = Date.now()
+    if (lastScanned.id === scooterId && now - lastScanned.time < 3000) {
+      return
+    }
+
     setScanning(false)
+    setLastScanned({ id: scooterId, time: now })
 
     try {
       const res = await toggleScooterStatus(scooterId)
@@ -24,7 +32,10 @@ export default function ScanPage() {
           const forceRes = await toggleScooterStatus(scooterId, true)
           setResult(forceRes)
         } else {
-          setScanning(true)
+          // Add a short delay before re-enabling scanning to let user move the camera
+          setTimeout(() => {
+            setScanning(true)
+          }, 800)
         }
       } else {
         setResult(res)
@@ -32,7 +43,7 @@ export default function ScanPage() {
     } catch (err) {
       setResult({ success: false, message: err.message || 'Gagal mengubah status scooter.' })
     }
-  }, [scanning])
+  }, [scanning, lastScanned])
 
   const handleError = useCallback((msg) => {
     setResult({ success: false, message: msg })

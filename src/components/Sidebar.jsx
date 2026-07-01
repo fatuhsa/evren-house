@@ -6,7 +6,7 @@ const NAV = [
   { to: '/',       icon: LayoutDashboard, label: 'Dashboard'  },
   { to: '/monitor', icon: Monitor,         label: 'Monitor'    },
   { to: '/scan',   icon: QrCode,          label: 'Scan QR'    },
-  { to: '/manage', icon: Package,         label: 'Produk'     },
+  { to: '/manage', icon: Package,         label: 'Kelola Unit' },
 ]
 
 export default function Sidebar({ onClose }) {

@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Plus, Download, Trash2, Search, Bike, AlertCircle } from 'lucide-react'
+import { Plus, Download, Trash2, Search, Bike, AlertCircle, ShieldAlert } from 'lucide-react'
 import { useScooterData } from '../hooks/useScooterData'
 import { addScooter, deleteScooter, updateScooter, downloadScooterQR } from '../storage'
 
 export default function ManagePage() {
-  const { scooters, loading, refresh } = useScooterData()
+  const { scooters, loading, error: dbError, refresh } = useScooterData()
   const [idInput, setIdInput] = useState('')
   const [type, setType] = useState('sd')
   const [search, setSearch] = useState('')
@@ -91,7 +91,38 @@ export default function ManagePage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
+      {dbError && scooters.length === 0 ? (
+        <div className="flex h-[50vh] flex-col items-center justify-center rounded-2xl border border-[var(--color-red-ring)] bg-[var(--color-surface)] p-12 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-red-subtle)] text-[var(--color-red)]">
+            <ShieldAlert size={24} />
+          </div>
+          <h3 className="text-[14px] font-semibold text-[var(--color-text)]">Koneksi Basis Data Gagal</h3>
+          <p className="mt-1.5 max-w-sm text-[12px] text-[var(--color-muted)] leading-relaxed">{dbError}</p>
+          <button
+            onClick={refresh}
+            className="mt-6 cursor-pointer rounded-lg bg-[var(--color-accent)] px-5 py-2 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Coba Hubungkan Kembali
+          </button>
+        </div>
+      ) : (
+        <>
+          {dbError && (
+            <div className="flex items-start gap-3 rounded-xl border border-[var(--color-red-ring)] bg-[var(--color-red-subtle)] p-4 text-[12px] text-[var(--color-red)]">
+              <ShieldAlert size={16} className="mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold">Koneksi Supabase Bermasalah</p>
+                <p className="mt-0.5 opacity-90">{dbError}</p>
+              </div>
+              <button
+                onClick={refresh}
+                className="cursor-pointer rounded border border-[var(--color-red-ring)] bg-transparent px-2.5 py-1 text-[11px] font-semibold text-[var(--color-red)] transition-colors hover:bg-[var(--color-red-subtle)]"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
         {/* Left column: Add Form */}
         <div className="h-fit rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
           <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-widest text-[var(--color-subtle)]">
@@ -297,6 +328,8 @@ export default function ManagePage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
+  )}
+</div>
   )
 }
