@@ -1,17 +1,7 @@
-import { formatDistanceToNow } from 'date-fns'
-import { id as localeId } from 'date-fns/locale'
-import { Clock } from 'lucide-react'
+import LiveTimer from './LiveTimer'
 
 export default function ScooterCard({ scooter }) {
   const status = scooter.status
-
-  const timeAgo = (() => {
-    try {
-      return formatDistanceToNow(new Date(scooter.lastUpdated), {
-        addSuffix: true, locale: localeId,
-      })
-    } catch { return '-' }
-  })()
 
   // Get status color configs
   const statusConfig = {
@@ -88,9 +78,8 @@ export default function ScooterCard({ scooter }) {
       )}
 
       {/* Time */}
-      <div className="flex items-center gap-1.5 pl-2 text-[11px] text-[var(--color-subtle)]">
-        <Clock size={11} />
-        <span>{timeAgo}</span>
+      <div className="pl-2">
+        <LiveTimer status={status} lastUpdated={scooter.lastUpdated} />
       </div>
     </div>
   )

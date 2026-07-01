@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
-import { ShieldAlert, Clock, ArrowUpRight, ArrowDownLeft, CalendarDays, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react'
+import { ShieldAlert, ArrowUpRight, ArrowDownLeft, CalendarDays, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react'
 import { useScooterData } from '../hooks/useScooterData'
 import { formatDistanceToNow, format, isSameDay, startOfDay, parseISO, isToday } from 'date-fns'
 import { id as localeId } from 'date-fns/locale'
+import LiveTimer from '../components/LiveTimer'
 
 // ── Helper: parse timestamp safely ────────────────────────
 function parseDate(ts) {
@@ -310,10 +311,6 @@ export default function MonitorPage() {
                   <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                     {filteredScooters.map((scooter) => {
                       const conf = statusConfigs[scooter.status] || statusConfigs.available
-                      const timeAgo = (() => {
-                        try { return formatDistanceToNow(new Date(scooter.lastUpdated), { addSuffix: true, locale: localeId }) }
-                        catch { return '-' }
-                      })()
                       return (
                         <div key={scooter.id} className={`relative flex flex-col gap-3 rounded-xl border p-4 bg-[var(--color-surface)] transition-all ${conf.border}`}>
                           <div className="flex items-center justify-between">
@@ -330,9 +327,8 @@ export default function MonitorPage() {
                               <span>{scooter.maintenanceNote}</span>
                             </div>
                           )}
-                          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[var(--color-muted)]">
-                            <Clock size={12} className="text-[var(--color-subtle)]" />
-                            <span>Update: {timeAgo}</span>
+                          <div className="mt-1">
+                            <LiveTimer status={scooter.status} lastUpdated={scooter.lastUpdated} />
                           </div>
                         </div>
                       )
